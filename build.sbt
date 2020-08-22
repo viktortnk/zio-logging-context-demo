@@ -34,6 +34,7 @@ val loggingCore =
       name := "util-logging-core",
       libraryDependencies ++= Seq(
         log4Cats,
+        "io.chrisdavenport" %% "log4cats-slf4j" % Version.log4Cats,
         catsEffect
       )
     )
