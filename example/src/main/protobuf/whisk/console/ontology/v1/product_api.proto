@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package whisk.console.ontology.v1;
+
+import "whisk/console/ontology/v1/product.proto";
+
+service ProductAPI {
+
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+}
+
+message GetProductRequest {
+  string id = 1;
+}
+
+message GetProductResponse {
+  ProductNode product = 1;
+}

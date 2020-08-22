@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package whisk.console.recipe.v1;
+
+message RecipeDetails {
+  string id = 1;
+  string name = 2;
+}

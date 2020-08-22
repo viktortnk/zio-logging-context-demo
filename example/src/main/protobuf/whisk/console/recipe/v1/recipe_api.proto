@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package whisk.console.recipe.v1;
+
+import "whisk/console/recipe/v1/recipe.proto";
+
+service RecipeAPI {
+
+  rpc GetRecipe(GetRecipeRequest) returns (GetRecipeResponse);
+}
+
+message GetRecipeRequest {
+  string id = 1;
+}
+
+message GetRecipeResponse {
+  RecipeDetails recipe = 1;
+}

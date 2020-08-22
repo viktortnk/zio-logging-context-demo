@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package whisk.console.ontology.v1;
+
+message ProductNode {
+  string id = 1;
+  string canonicalName = 2;
+}

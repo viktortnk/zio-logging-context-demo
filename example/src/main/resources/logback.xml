@@ -1,0 +1,30 @@
+
+<configuration>
+    <!-- Configure the Console appender -->
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <immediateFlush>false</immediateFlush>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"release":"${SENTRY_RELEASE:-undefined}"}</customFields>
+            <fieldNames>
+                <level>severity</level>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <appender name="AsyncConsole"
+              class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="Console" />
+        <discardingThreshold>20</discardingThreshold>
+        <queueSize>256</queueSize>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <!-- Logger level might be overridden via env variable ATLAS_LOG_LEVEL  -->
+    <logger name="whisk" level="${ATLAS_LOG_LEVEL:-INFO}"/>
+
+    <!-- Enable the Console and Sentry appenders, Console is provided as an example
+         of a non-Sentry logger that is set to a different logging threshold -->
+    <root level="INFO">
+        <appender-ref ref="AsyncConsole" />
+    </root>
+</configuration>
