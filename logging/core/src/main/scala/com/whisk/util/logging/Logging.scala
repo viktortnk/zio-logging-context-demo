@@ -3,15 +3,14 @@ package com.whisk.util.logging
 import cats.FlatMap
 import cats.effect.Sync
 import cats.syntax.functor._
+import cats.syntax.flatMap._
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 
-trait Logging[F[_]] extends Logger[F] {
+trait Logging[F[_]] {
 
-  def getLogger(implicit f: Sync[F]): Logger[F]
+  def fromClass(cls: Class[_]): F[Logger[F]]
 
-  def getLoggerFromName(name: String)(implicit f: Sync[F]): Logger[F]
-
-  def create(implicit f: Sync[F]): F[Logger[F]]
+  def fromName(name: String): F[Logger[F]]
 }
 
 trait MDCLogging[F[_]] extends Logging[F] with LoggingContext[F]
@@ -20,77 +19,81 @@ object Logging {
 
   def apply[F[_]: Logging]: Logging[F] = implicitly[Logging[F]]
 
-  def createWithContext[F[_]: Sync](implicit LC: LoggingContext[F]): F[MDCLogging[F]] = {
-    for {
-      logger <- Slf4jLogger.fromName[F]("default")
-    } yield {
-      new ContextAwareLogging[F](logger, LC)
+  def noContext[F[_]: Sync]: Logging[F] =
+    new Logging[F] {
+      override def fromClass(cls: Class[_]): F[Logger[F]] =
+        Slf4jLogger.fromClass[F](cls).widen[Logger[F]]
+
+      override def fromName(name: String): F[Logger[F]] =
+        Slf4jLogger.fromName[F](name).widen[Logger[F]]
+    }
+
+  def withContext[F[_]: Sync](implicit LC: LoggingContext[F]): MDCLogging[F] = {
+    new MDCLogging[F] {
+      override def fromClass(cls: Class[_]): F[Logger[F]] =
+        Slf4jLogger
+          .fromClass[F](cls)
+          .widen[Logger[F]]
+          .map(new ContextAwareLogging(_, LC))
+
+      override def fromName(name: String): F[Logger[F]] =
+        Slf4jLogger
+          .fromName[F](name)
+          .widen[Logger[F]]
+          .map(new ContextAwareLogging(_, LC))
+
+      override def get: F[Entry] = LC.get
+
+      override def set(a: Entry): F[Unit] = LC.set(a)
+
+      override def getAndSet(a: Entry): F[Entry] = LC.getAndSet(a)
+
+      override def update(f: Entry => Entry): F[Unit] = LC.update(f)
     }
   }
 
-  private class ContextAwareLogging[F[_]: FlatMap](rootLogger: Logger[F], lc: LoggingContext[F])
-      extends MDCLogging[F] {
-    val outer = Map.empty[String, String] //TODO fix later
+  private class ContextAwareLogging[F[_]: FlatMap](log: Logger[F], lc: LoggingContext[F]) extends Logger[F] {
 
-    private def withOuter(func: Map[String, String] => F[Unit]): F[Unit] = {
-      FlatMap[F].flatMap(lc.get)(func)
-    }
+    private def withOuter(func: lc.Entry => F[Unit]): F[Unit] =
+      lc.get.flatMap(func)
 
-    def error(message: => String): F[Unit] = withOuter(rootLogger.error(_)(message))
-    def warn(message: => String): F[Unit] = withOuter(rootLogger.warn(_)(message))
-    def info(message: => String): F[Unit] = withOuter(rootLogger.info(_)(message))
-    def debug(message: => String): F[Unit] = withOuter(rootLogger.debug(_)(message))
-    def trace(message: => String): F[Unit] = withOuter(rootLogger.trace(_)(message))
+    def error(message: => String): F[Unit] = withOuter(log.error(_)(message))
+    def warn(message: => String): F[Unit] = withOuter(log.warn(_)(message))
+    def info(message: => String): F[Unit] = withOuter(log.info(_)(message))
+    def debug(message: => String): F[Unit] = withOuter(log.debug(_)(message))
+    def trace(message: => String): F[Unit] = withOuter(log.trace(_)(message))
 
     def trace(ctx: Map[String, String])(msg: => String): F[Unit] =
-      rootLogger.trace(outer ++ ctx)(msg)
+      withOuter(outer => log.trace(outer ++ ctx)(msg))
     def debug(ctx: Map[String, String])(msg: => String): F[Unit] =
-      rootLogger.debug(outer ++ ctx)(msg)
+      withOuter(outer => log.debug(outer ++ ctx)(msg))
     def info(ctx: Map[String, String])(msg: => String): F[Unit] =
-      withOuter(outer => rootLogger.info(outer ++ ctx)(msg))
+      withOuter(outer => log.info(outer ++ ctx)(msg))
     def warn(ctx: Map[String, String])(msg: => String): F[Unit] =
-      rootLogger.warn(outer ++ ctx)(msg)
+      withOuter(outer => log.warn(outer ++ ctx)(msg))
     def error(ctx: Map[String, String])(msg: => String): F[Unit] =
-      rootLogger.error(outer ++ ctx)(msg)
+      withOuter(outer => log.error(outer ++ ctx)(msg))
 
     def error(t: Throwable)(message: => String): F[Unit] =
-      rootLogger.error(outer, t)(message)
+      withOuter(outer => log.error(outer, t)(message))
     def warn(t: Throwable)(message: => String): F[Unit] =
-      rootLogger.warn(outer, t)(message)
+      withOuter(outer => log.warn(outer, t)(message))
     def info(t: Throwable)(message: => String): F[Unit] =
-      rootLogger.info(outer, t)(message)
+      withOuter(outer => log.info(outer, t)(message))
     def debug(t: Throwable)(message: => String): F[Unit] =
-      rootLogger.debug(outer, t)(message)
+      withOuter(outer => log.debug(outer, t)(message))
     def trace(t: Throwable)(message: => String): F[Unit] =
-      rootLogger.trace(outer, t)(message)
+      withOuter(outer => log.trace(outer, t)(message))
 
     def error(ctx: Map[String, String], t: Throwable)(message: => String): F[Unit] =
-      rootLogger.error(outer ++ ctx, t)(message)
+      withOuter(outer => log.error(outer ++ ctx, t)(message))
     def warn(ctx: Map[String, String], t: Throwable)(message: => String): F[Unit] =
-      rootLogger.warn(outer ++ ctx, t)(message)
+      withOuter(outer => log.warn(outer ++ ctx, t)(message))
     def info(ctx: Map[String, String], t: Throwable)(message: => String): F[Unit] =
-      rootLogger.info(outer ++ ctx, t)(message)
+      withOuter(outer => log.info(outer ++ ctx, t)(message))
     def debug(ctx: Map[String, String], t: Throwable)(message: => String): F[Unit] =
-      rootLogger.debug(outer ++ ctx, t)(message)
+      withOuter(outer => log.debug(outer ++ ctx, t)(message))
     def trace(ctx: Map[String, String], t: Throwable)(message: => String): F[Unit] =
-      rootLogger.trace(outer ++ ctx, t)(message)
-
-    override def get: F[Entry] = lc.get
-
-    override def set(a: Entry): F[Unit] = lc.set(a)
-
-    override def getAndSet(a: Entry): F[Entry] = lc.getAndSet(a)
-
-    override def update(f: Entry => Entry): F[Unit] = lc.update(f)
-
-    override def getLogger(implicit f: Sync[F]): Logger[F] = {
-      new ContextAwareLogging[F](Slf4jLogger.getLogger[F], lc)
-    }
-
-    override def getLoggerFromName(name: String)(implicit f: Sync[F]): Logger[F] =
-      new ContextAwareLogging[F](Slf4jLogger.getLoggerFromName[F](name: String), lc)
-
-    override def create(implicit f: Sync[F]): F[Logger[F]] =
-      Slf4jLogger.create[F].map(new ContextAwareLogging[F](_, lc))
+      withOuter(outer => log.trace(outer ++ ctx, t)(message))
   }
 }

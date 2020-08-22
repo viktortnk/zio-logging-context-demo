@@ -28,7 +28,7 @@ object ConsoleApp extends App {
 
     val serverList: Task[ServiceList[Any]] = for {
       implicit0(lc: LoggingContext[Task]) <- ZIOLoggingContext.make
-      implicit0(logger: MDCLogging[Task]) <- Logging.createWithContext[Task]
+      implicit0(logging: MDCLogging[Task]) <- Task.succeed(Logging.withContext[Task])
       recipeDao = new RecipeDao[Task] // this picks up implicit structured logger
       recipeDao2 = new RecipeDao2[Task] // this picks up implicit structured logger
       recipeService =
