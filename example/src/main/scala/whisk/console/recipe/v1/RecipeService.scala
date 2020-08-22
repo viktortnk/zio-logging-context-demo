@@ -4,7 +4,7 @@ import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.{Applicative, Monad}
-import com.whisk.util.logging.{Logger, Logging, MDCLogging}
+import com.whisk.util.logging.{Logging, MDCLogging}
 import io.grpc.Status
 import whisk.console.auth.User
 import whisk.console.recipe.v1.recipe.RecipeDetails
@@ -55,7 +55,7 @@ class RecipeDao[F[_]: Monad: Logging] {
 
 class RecipeDao2[F[_]: Monad: Logging] {
 
-  private val logger = Logger.flatten(Logging[F].fromName(getClass.getName))
+  private val logger = Logging[F].getLoggerFromClass(getClass)
 
   def get(id: String): F[Option[RecipeDetails]] = {
     logger.info(Map("extraParam" -> "0"))("requesting with id=" + id) *>

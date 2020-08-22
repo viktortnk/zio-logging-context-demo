@@ -11,6 +11,10 @@ trait Logging[F[_]] {
   def fromClass(cls: Class[_]): F[Logger[F]]
 
   def fromName(name: String): F[Logger[F]]
+
+  def getLoggerFromClass(clazz: Class[_]): Logger[F]
+
+  def getLoggerFromName(name: String): Logger[F]
 }
 
 trait MDCLogging[F[_]] extends Logging[F] with LoggingContext[F]
@@ -26,6 +30,12 @@ object Logging {
 
       override def fromName(name: String): F[Logger[F]] =
         Slf4jLogger.fromName[F](name).widen[Logger[F]]
+
+      override def getLoggerFromClass(clazz: Class[_]): Logger[F] =
+        Slf4jLogger.getLoggerFromClass[F](clazz)
+
+      override def getLoggerFromName(name: String): Logger[F] =
+        Slf4jLogger.getLoggerFromName[F](name)
     }
 
   def withContext[F[_]: Sync](implicit LC: LoggingContext[F]): MDCLogging[F] = {
@@ -41,6 +51,12 @@ object Logging {
           .fromName[F](name)
           .widen[Logger[F]]
           .map(new ContextAwareLogging(_, LC))
+
+      override def getLoggerFromClass(clazz: Class[_]): Logger[F] =
+        new ContextAwareLogging(Slf4jLogger.getLoggerFromClass[F](clazz), LC)
+
+      override def getLoggerFromName(name: String): Logger[F] =
+        new ContextAwareLogging(Slf4jLogger.getLoggerFromName[F](name), LC)
 
       override def get: F[Entry] = LC.get
 
