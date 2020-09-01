@@ -2,7 +2,12 @@ syntax = "proto3";
 
 package whisk.console.recipe.v1;
 
+import "google/protobuf/wrappers.proto";
+
 message RecipeDetails {
   string id = 1;
-  string name = 2;
+  google.protobuf.StringValue name = 2;
+  repeated string names = 3;
+  bool plain_bool = 4;
+  google.protobuf.BoolValue bool_value = 5;
 }

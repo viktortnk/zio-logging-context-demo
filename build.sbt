@@ -63,6 +63,7 @@ val example =
         "io.grpc" % "grpc-netty" % grpcVersion,
         "io.netty" % "netty-tcnative-boringssl-static" % "2.0.34.Final",
         "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+        "com.thesamet.scalapb.common-protos" %% "proto-google-common-protos-scalapb_0.10" % "1.18.0-0" % "protobuf",
         "com.thesamet.scalapb" %% "scalapb-json4s" % "0.10.1",
         "com.linecorp.armeria" % "armeria-grpc" % "0.99.9",
         "com.linecorp.armeria" % "armeria" % "0.99.9",
